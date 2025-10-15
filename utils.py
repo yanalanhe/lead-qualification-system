@@ -5,7 +5,6 @@ import re
 import streamlit as st
 from datetime import datetime
 
-
 def log_system_message(message):
     """Add a timestamped message to system logs."""
     if 'system_logs' not in st.session_state:

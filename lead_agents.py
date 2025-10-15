@@ -3,30 +3,148 @@ Agent system for the Lead Qualification System.
 """
 import asyncio
 import streamlit as st
-from agents import Agent, Runner, function_tool, handoff, RunContextWrapper
+from agents import (
+    Agent, Runner, function_tool, handoff, RunContextWrapper,
+    ModelSettings, input_guardrail, output_guardrail, SQLiteSession,
+    GuardrailFunctionOutput
+)
 from email_service import route_lead_email, force_lead_email
 from database import save_lead_to_database
 from utils import log_system_message, extract_lead_details
+from config import OPENAI_API_KEY
+
+
+# Guardrail functions for input validation
+@input_guardrail
+def validate_lead_input(ctx: RunContextWrapper, agent: Agent, input_data) -> GuardrailFunctionOutput:
+    """Validate that the input contains meaningful lead information."""
+    input_text = str(input_data) if input_data else ""
+    
+    # Only block truly problematic content
+    # Check for completely empty input
+    if not input_text.strip():
+        return GuardrailFunctionOutput(
+            output_info="Empty input provided",
+            tripwire_triggered=True
+        )
+    
+    # Only block obvious spam patterns (not individual words)
+    obvious_spam_patterns = [
+        "asdfasdf", "qwertyqwerty", "testtesttest", 
+        "spamspamspam", "fakefakefake", "nonsensenonsense"
+    ]
+    
+    input_lower = input_text.lower()
+    for pattern in obvious_spam_patterns:
+        if pattern in input_lower:
+            return GuardrailFunctionOutput(
+                output_info="Input appears to be spam content",
+                tripwire_triggered=True
+            )
+    
+    # Allow all other input - let the agent handle it
+    return GuardrailFunctionOutput(
+        output_info="Input validation passed",
+        tripwire_triggered=False
+    )
+
+@output_guardrail
+def validate_response_quality(ctx: RunContextWrapper, agent: Agent, response: str) -> GuardrailFunctionOutput:
+    """Ensure responses are professional and helpful."""
+    # Check for appropriate tone
+    inappropriate_words = ["damn", "hell", "crap", "stupid", "idiot"]
+    if any(word in response.lower() for word in inappropriate_words):
+        return GuardrailFunctionOutput(
+            output_info="Response contains inappropriate language",
+            tripwire_triggered=True
+        )
+    
+    # Only block completely empty responses
+    if not response.strip():
+        return GuardrailFunctionOutput(
+            output_info="Empty response generated",
+            tripwire_triggered=True
+        )
+    
+    # Allow short responses - the agent should be able to generate appropriate responses
+    # of any length for lead qualification
+    return GuardrailFunctionOutput(
+        output_info="Response quality validation passed",
+        tripwire_triggered=False
+    )
+
+
+# Enhanced model settings
+def get_model_settings() -> ModelSettings:
+    """Get optimized model settings for lead qualification."""
+    return ModelSettings(
+        temperature=0.7,  # Balanced creativity and consistency
+        max_tokens=1000,  # Sufficient for detailed responses
+        top_p=0.9,        # Good balance for diverse responses
+        frequency_penalty=0.1,  # Slight penalty to avoid repetition
+        presence_penalty=0.1    # Encourage new topics
+    )
+
+
+# Session management
+def get_session() -> SQLiteSession:
+    """Get or create a database session for conversation persistence."""
+    return SQLiteSession("conversations.db")
 
 
 # Agent tool functions
 @function_tool
 def send_email(to_email: str, subject: str, body: str, cc: str = None) -> str:
-    """Send email tool for agents."""
-    from email_service import send_email_message
-    return send_email_message(to_email, subject, body, cc)
+    """Send email tool for agents with enhanced error handling."""
+    try:
+        from email_service import send_email_message
+        result = send_email_message(to_email, subject, body, cc)
+        log_system_message(f"EMAIL SENT: {to_email} - {subject}")
+        return f"Email sent successfully to {to_email}: {result}"
+    except Exception as e:
+        error_msg = f"Failed to send email to {to_email}: {str(e)}"
+        log_system_message(f"EMAIL ERROR: {error_msg}")
+        return error_msg
 
 
 @function_tool
 def route_lead_to_email(lead_type: str, lead_name: str, company: str = None, email: str = None, phone: str = None, details: str = None, priority: str = "normal") -> str:
-    """Route lead to appropriate email tool for agents."""
-    return route_lead_email(lead_type, lead_name, company=company, email=email, phone=phone, details=details, priority=priority)
+    """Route lead to appropriate email tool for agents with validation."""
+    try:
+        # Validate required fields
+        if not lead_name or not lead_type:
+            return "Error: Lead name and type are required for routing."
+        
+        if lead_type not in ["enterprise", "smb", "individual"]:
+            return f"Error: Invalid lead type '{lead_type}'. Must be enterprise, smb, or individual."
+        
+        result = route_lead_email(lead_type, lead_name, company=company, email=email, phone=phone, details=details, priority=priority)
+        log_system_message(f"LEAD ROUTED: {lead_type} - {lead_name}")
+        return f"Lead routed successfully: {result}"
+    except Exception as e:
+        error_msg = f"Failed to route {lead_type} lead '{lead_name}': {str(e)}"
+        log_system_message(f"ROUTING ERROR: {error_msg}")
+        return error_msg
 
 
 @function_tool
 def store_lead_in_database(lead_type: str, lead_name: str, company: str = None, email: str = None, phone: str = None, details: str = None, priority: str = "normal") -> str:
-    """Store lead in database tool for agents."""
-    return save_lead_to_database(lead_type, lead_name, company, email, phone, details, priority)
+    """Store lead in database tool for agents with validation."""
+    try:
+        # Validate required fields
+        if not lead_name or not lead_type:
+            return "Error: Lead name and type are required for storage."
+        
+        if lead_type not in ["enterprise", "smb", "individual"]:
+            return f"Error: Invalid lead type '{lead_type}'. Must be enterprise, smb, or individual."
+        
+        result = save_lead_to_database(lead_type, lead_name, company, email, phone, details, priority)
+        log_system_message(f"LEAD STORED: {lead_type} - {lead_name}")
+        return f"Lead stored successfully: {result}"
+    except Exception as e:
+        error_msg = f"Failed to store {lead_type} lead '{lead_name}': {str(e)}"
+        log_system_message(f"STORAGE ERROR: {error_msg}")
+        return error_msg
 
 
 def create_handoff_callback(lead_type):
@@ -34,16 +152,21 @@ def create_handoff_callback(lead_type):
     def on_handoff(ctx: RunContextWrapper):
         log_system_message(f"HANDOFF: {lead_type.title()} lead detected")
         try:
-            # Extract conversation history
+            # Extract conversation history from Streamlit session state
             conversation = ""
-            if hasattr(ctx, 'conversation_history'):
-                conversation = ctx.conversation_history
-            elif hasattr(ctx, 'messages'):
-                conversation = "\n".join(msg.content for msg in ctx.messages if hasattr(msg, 'content'))
-            
-            # Add session conversation history if available
             if 'conversation_history' in st.session_state:
-                conversation = f"{conversation}\n{st.session_state['conversation_history']}" if conversation else st.session_state['conversation_history']
+                conversation = st.session_state['conversation_history']
+            
+            # Also try to get messages from session state if available
+            if 'messages' in st.session_state and st.session_state['messages']:
+                message_text = "\n".join([
+                    f"{msg['role']}: {msg['content']}" 
+                    for msg in st.session_state['messages']
+                ])
+                if conversation:
+                    conversation = f"{conversation}\n{message_text}"
+                else:
+                    conversation = message_text
             
             # Extract lead details and force email
             lead_details = extract_lead_details(conversation)
@@ -106,15 +229,19 @@ def create_agent_system():
         """
     }
     
-    # Create specialized agents
+    # Create specialized agents with enhanced settings
     agents = {}
     for agent_type, instruction in agent_instructions.items():
         agents[agent_type] = Agent(
             name=f"{agent_type.title()}LeadAgent",
-            instructions=instruction
+            instructions=instruction,
+            model_settings=get_model_settings(),
+            input_guardrails=[validate_lead_input],
+            output_guardrails=[validate_response_quality],
+            tools=[route_lead_to_email, store_lead_in_database, send_email]
         )
     
-    # Create lead qualifier with handoffs
+    # Create lead qualifier with handoffs and enhanced settings
     lead_qualifier = Agent(
         name="LeadQualifier",
         instructions="""
@@ -141,7 +268,10 @@ def create_agent_system():
             handoff(agents["smb"], on_handoff=create_handoff_callback("smb")),
             handoff(agents["individual"], on_handoff=create_handoff_callback("individual"))
         ],
-        tools=[route_lead_to_email, store_lead_in_database, send_email]
+        tools=[route_lead_to_email, store_lead_in_database, send_email],
+        model_settings=get_model_settings(),
+        input_guardrails=[validate_lead_input],
+        output_guardrails=[validate_response_quality]
     )
     
     return lead_qualifier
@@ -168,10 +298,15 @@ async def process_user_message(user_input):
             log_system_message("PROCESSING: Creating lead qualifier agent")
             st.session_state['lead_qualifier'] = create_agent_system()
         
-        # Process through agent system
+        # Process through agent system with session management
         log_system_message("PROCESSING: Running through lead qualifier")
         with st.spinner('Processing your message...'):
-            result = await Runner.run(st.session_state['lead_qualifier'], user_input)
+            session = get_session()
+            result = await Runner.run(
+                st.session_state['lead_qualifier'], 
+                user_input,
+                context=session
+            )
         
         # Get and store response
         response = result.final_output
