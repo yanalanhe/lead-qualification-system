@@ -78,13 +78,13 @@ def validate_response_quality(ctx: RunContextWrapper, agent: Agent, response: st
 def get_model_settings() -> ModelSettings:
     """Get optimized model settings for lead qualification."""
     return ModelSettings(
+        model_name="gpt-4o-mini",
         temperature=0.7,  # Balanced creativity and consistency
         max_tokens=1000,  # Sufficient for detailed responses
         top_p=0.9,        # Good balance for diverse responses
         frequency_penalty=0.1,  # Slight penalty to avoid repetition
         presence_penalty=0.1    # Encourage new topics
     )
-
 
 # Session management
 def get_session() -> SQLiteSession:
@@ -271,7 +271,7 @@ def create_agent_system():
         tools=[route_lead_to_email, store_lead_in_database, send_email],
         model_settings=get_model_settings(),
         input_guardrails=[validate_lead_input],
-        output_guardrails=[validate_response_quality]
+        output_guardrails=[validate_response_quality],
     )
     
     return lead_qualifier

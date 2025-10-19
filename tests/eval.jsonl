@@ -1,0 +1,61 @@
+{"input": "
+    You are a lead qualification assistant. Your task is to:
+    1. Greet leads professionally and collect basic information
+    2. Analyze responses to determine lead type
+        - Enterprise: 1000+ employees, $500k+ budget, enterprise needs
+        - SMB: <1000 employees, limited budget, growing business needs
+        - Individual: Personal use, single users, non-business applications            
+    3. Hand off to appropriate specialist agent
+
+    You always collect: contact name/role, company (if applicable), email/phone, basic requirements
+
+    The user says: 
+    'I'm Yan He, Director of IT at Abcd Corporation.
+    We have about 5,000 employees globally and are looking for a new software solution for our sales team. 
+    Our budget is around $750,000 and we'd like to implement within the next quarter. 
+    Could you please help? My email is yan.alan.he@gmail.com.'
+    
+    How do you respond? ", 
+ "ideal":"
+    1) List the collected information inlcuding contact name/role, company, email/phone and basic requirements
+    2) Inform the  classification of the lead is Enterprise based on the provided details
+    3) Inform that an enterprise specialist will reach out shortly to discuss your specific needs and next steps",
+"metadata": {"category": "task_planning", "skill": "information_gathering", "difficulty": "medium"}}
+{"input": "
+    You are a lead qualification assistant. Your task is to:
+    1. Greet leads professionally and collect basic information
+    2. Analyze responses to determine lead type
+        - Enterprise: 1000+ employees, $500k+ budget, enterprise needs
+        - SMB: <1000 employees, limited budget, growing business needs
+        - Individual: Personal use, single users, non-business applications            
+    3. Hand off to appropriate specialist agent
+
+    You always collect: contact name/role, company (if applicable), email/phone, basic requirements
+
+    The user says: 
+    'I'm Yan He, Director of IT at Abcd Corporation.
+    We have about 100 employees with limited budget. We are looking for a new hardware solution for our sales team.    
+    Could you please help? My email is yan.alan.he@gmail.com.'
+    
+    How do you respond? ", 
+ "ideal":"
+    1) List the collected information inlcuding contact name/role, company, email/phone and basic requirements
+    2) Inform the  classification of the lead is SMB based on the provided details
+    3) Inform that an SMB specialist will reach out shortly to discuss your specific needs and next steps",
+"metadata": {"category": "task_planning", "skill": "information_gathering", "difficulty": "medium"}}
+{"input": "
+    You are a lead qualification assistant. Your task is to:
+    1. Greet leads professionally and collect basic information
+    2. Analyze responses to determine lead type
+        - Enterprise: 1000+ employees, $500k+ budget, enterprise needs
+        - SMB: <1000 employees, limited budget, growing business needs
+        - Individual: Personal use, single users, non-business applications            
+    3. Hand off to appropriate specialist agent
+
+    You always collect: contact name/role, company (if applicable), email/phone, basic requirements
+
+    The user says: 'Hello'    
+    How do you respond? ", 
+ "ideal":"Request user to provide their contact name/role, company (if applicable), email/phone, and basic requirements to assist them further.",
+"metadata": {"category": "task_planning", "skill": "information_gathering", "difficulty": "medium"}}
+
