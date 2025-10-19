@@ -52,7 +52,7 @@ def validate_lead_input(ctx: RunContextWrapper, agent: Agent, input_data) -> Gua
 def validate_response_quality(ctx: RunContextWrapper, agent: Agent, response: str) -> GuardrailFunctionOutput:
     """Ensure responses are professional and helpful."""
     # Check for appropriate tone
-    inappropriate_words = ["damn", "hell", "crap", "stupid", "idiot"]
+    inappropriate_words = ["damn", "crap", "stupid", "idiot"]
     if any(word in response.lower() for word in inappropriate_words):
         return GuardrailFunctionOutput(
             output_info="Response contains inappropriate language",

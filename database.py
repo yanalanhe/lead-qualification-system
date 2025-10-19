@@ -28,7 +28,7 @@ def init_database():
         ''')
         conn.commit()
         conn.close()
-        st.sidebar.success(f"✅ Connected to SQLite database: {DB_FILE}")
+        #st.sidebar.success(f"✅ Connected to SQLite database: {DB_FILE}")
         return True
     except Exception as e:
         st.sidebar.error(f"❌ Failed to initialize database: {e}")
