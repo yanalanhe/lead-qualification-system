@@ -21,7 +21,8 @@ def render_sidebar():
     
     # Email status and controls
     if EMAIL_ENABLED:
-        st.sidebar.success(f"✅ Email enabled ({EMAIL_USER})")
+        #st.sidebar.success(f"✅ Email enabled ({EMAIL_USER})")
+        st.sidebar.success(f"✅ Email enabled")
         
         if st.sidebar.button("📧 Send Test Email"):
             send_test_email()
@@ -81,31 +82,31 @@ def render_sidebar():
 
 def render_main_content():
     """Render the main content area with chat interface."""
-    #col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns([2, 1])
     
-    #with col1:
+    with col1:
         # Display chat messages
-    for message in st.session_state['messages']:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
+        for message in st.session_state['messages']:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
+        
+        # Chat input
+        user_input = st.chat_input("Type your message here...")
+        if user_input:
+            # Import here to avoid circular imports and avoid conflict with installed package 'agents'
+            from lead_agents import process_user_message
+            import asyncio
+            asyncio.run(process_user_message(user_input))
+            st.rerun()
     
-    # Chat input
-    user_input = st.chat_input("Type your message here...")
-    if user_input:
-        # Import here to avoid circular imports and avoid conflict with installed package 'agents'
-        from lead_agents import process_user_message
-        import asyncio
-        asyncio.run(process_user_message(user_input))
-        st.rerun()
-    
-"""     with col2:
+    with col2:
         # System logs
         st.subheader("System Logs")
         log_container = st.container(height=500)
         with log_container:
             for log in st.session_state['system_logs']:
                 st.text(log)
- """
+
 
 def render_header():
     """Render the application header."""

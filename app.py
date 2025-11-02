@@ -22,7 +22,7 @@ def main():
         st.warning("Failed to initialize database. Check system logs for details.")
     
     # Render sidebar
-    #render_sidebar()
+    render_sidebar()
     
     # Render main content
     render_main_content()
